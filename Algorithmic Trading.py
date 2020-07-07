@@ -1,7 +1,7 @@
 """
 This script simulates buying and selling stocks by using a moving average algorithm to determine
 whether a stock is worth buying. If the stock is owned, it also applies the same algorithm to 
-determine if it is best to sell.
+determine if it is best to sell. You can manually sell stocks by pressing ctrl+shift
 
 Available exchanges/locations: NYSE, Nasdaq, Canadian Stocks
 
@@ -20,7 +20,7 @@ import math
 import csv
 import sys
 import json
-from pprint import pprint
+import keyboard
 
 import datetime
 import pytz
@@ -31,7 +31,7 @@ colorama.init()
 
 #Set initial investment
 initial_investment = 5000
-
+sell_list = list()
 
 #Load previously owned stocks
 try:
@@ -157,7 +157,7 @@ def sell_stock(symbol, current_Value):
 	global MONEY
 	profit = (round(current_Value,4) -  owned_stocks[symbol]['BUY PRICE'])*owned_stocks[symbol]['QUANTITY']
 	MONEY = MONEY + (round(current_Value,4)*owned_stocks[symbol]['QUANTITY'])
-	print("Sell {} Price {:.4f} Profit: {:.4f} ".format(symbol, round(current_Value,4),round(profit,4)))
+	print("Sell {} Price {:.4f} Profit: {:.4f}".format(symbol, round(current_Value,4),round(profit,4)))
 	del owned_stocks[symbol]
 
 #Print individual stock summary
@@ -206,7 +206,10 @@ def refresh_information():
 		try:
 			current_Value =  data_compacted[symbol]['Close'][int(PERIOD[:-1])-1]
 			if symbol in owned_stocks:
-				if symbol == 'MONEY':
+				if symbol in sell_list:
+					sell_stock(symbol, current_Value)
+					sell_list.remove(symbol)
+				elif symbol == 'MONEY':
 					continue
 				else:
 					print_stock_info(symbol, current_Value)
@@ -246,7 +249,7 @@ def refresh_information():
 
 
 if __name__ == "__main__":
-	while True:
+	while True:				
 		#Only enable script while stock market is open (9:30 Eastern to 4PM Eastern)
 		now = datetime.datetime.now(pytz.timezone('US/Eastern'))
 		today930am = now.replace(hour=9, minute = 30)
@@ -268,7 +271,13 @@ if __name__ == "__main__":
 			if script_enabled:
 				try:
 					refresh_information()
-					time.sleep(120)
+					timeout_start = time.time()
+					while time.time() <= timeout_start + 120:
+						if keyboard.is_pressed('ctrl+shift'):
+							sell_list = input("Enter comma separated string of stocks to sell: ").replace(' ', '').split(',')
+							break
+						else:
+							pass
 				except Exception as e:
 					print(e)
 					time.sleep(120)
