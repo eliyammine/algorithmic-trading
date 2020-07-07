@@ -74,10 +74,16 @@ class Writer(object):
 	def flush(self) :
 		for f in self.files:
 			f.flush()
+			
+class NullWriter(object):
+	def write(self, obj):
+		pass
+nullwrite = NullWriter()
 
 #Setup logging
 file = open("logs.txt", "a")
-sys.stdout = Writer(sys.stdout, file)
+writer = Writer(sys.stdout, file)
+sys.stdout = writer
 
 #Get top x stocks from exchange sorted by market cap
 def get_top_stocks():
@@ -96,6 +102,7 @@ def get_top_stocks():
 
 #Download stock prices for the top x chosen stocks
 def download_stock_prices(tickers):
+	sys.stdout = nullwrite
 	try:
 		data = pdr.get_data_yahoo(
 				tickers = str(tickers),
@@ -106,42 +113,43 @@ def download_stock_prices(tickers):
 				)
 		data_compacted = data.loc[:,(slice(None),('Close'))]
 		data_compacted = data_compacted.apply(lambda x: pd.Series(x.dropna().values)).fillna('')
+		sys.stdout = writer
 		return(data_compacted)
 	except Exception as e:
 		print(e)
+		sys.stdout = writer
 		data = []
 		data_compacted = []
 		pass
 
 #Print summary of stock information
 def print_information(total_profit, total_invested, MONEY):
-	print()
 	if round(total_profit,4) > 0:
-		print(Fore.GREEN + "TOTAL Profit: {:.2f}".format(round(total_profit,4)) + Style.RESET_ALL)
+		print(Fore.GREEN + "TOTAL Profit: {:.4f}".format(round(total_profit,4)) + Style.RESET_ALL)
 	else:
-		print(Fore.RED + "TOTAL Profit: {:.2f}".format(round(total_profit,4)) + Style.RESET_ALL)
-	print("TOTAL Invested: {:.2f}".format(round(total_invested,4)))
-	print("TOTAL Money: {:.2f}".format(round(MONEY,4)))
+		print(Fore.RED + "TOTAL Profit: {:.4f}".format(round(total_profit,4)) + Style.RESET_ALL)
+	print("TOTAL Invested: {:.4f}".format(round(total_invested,4)))
+	print("TOTAL Money: {:.4f}".format(round(MONEY,4)))
 	overall_profit = MONEY + total_invested + total_profit - initial_investment
 	if round(overall_profit,4) > 0:
-		print(Fore.GREEN + "OVERALL Profit: {:.2f}".format(round(overall_profit,4)) + Style.RESET_ALL)
+		print(Fore.GREEN + "OVERALL Profit: {:.4f}".format(round(overall_profit,4)) + Style.RESET_ALL)
 	else:
-		print(Fore.RED + "OVERALL Profit: {:.2f}".format(round(overall_profit,4)) + Style.RESET_ALL)
+		print(Fore.RED + "OVERALL Profit: {:.4f}".format(round(overall_profit,4)) + Style.RESET_ALL)
 		
 #Buy a stock and subtract from total money
 def buy_stock(symbol, current_Value, SELL, ROI):
 	global MONEY
 	if MONEY >= (0.25*MONEY)/round(current_Value,4):
 		if math.floor((0.25*MONEY)/round(current_Value,4)) > 49:
-			print("BUY: {} Price Buy: {:.2f} Price Sell: {:.2f} ROI: {:.2f}%".format(symbol, round(current_Value,4),SELL, ROI), end = '')
+			print("BUY: {} Price Buy: {:.4f} Price Sell: {:.4f} ROI: {:.4f}%".format(symbol, round(current_Value,4),SELL, ROI), end = '')
 			owned_stocks[symbol] = {}
 			owned_stocks[symbol]['BUY PRICE'] =round(current_Value,4)
 			owned_stocks[symbol]['SELL PRICE'] = round(SELL, 4)
 			owned_stocks[symbol]['QUANTITY'] = math.floor((0.25*MONEY)/round(current_Value,4))
 			
 			i = owned_stocks[symbol]['QUANTITY']
-			print(Fore.RED + " Spent: {:.2f} ({} Shares)".format(round(current_Value,4)*i,i)+ Style.RESET_ALL, end ='')
-			print(Fore.GREEN + " Remaining: {:.2f}".format(MONEY - i*round(current_Value,4))+ Style.RESET_ALL)
+			print(Fore.RED + " Spent: {:.4f} ({} Shares)".format(round(current_Value,4)*i,i)+ Style.RESET_ALL, end ='')
+			print(Fore.GREEN + " Remaining: {:.4f}".format(MONEY - i*round(current_Value,4))+ Style.RESET_ALL)
 			MONEY = MONEY - i*round(current_Value,4)
 
 #Sell a stock and show profit
@@ -149,7 +157,7 @@ def sell_stock(symbol, current_Value):
 	global MONEY
 	profit = (round(current_Value,4) -  owned_stocks[symbol]['BUY PRICE'])*owned_stocks[symbol]['QUANTITY']
 	MONEY = MONEY + (round(current_Value,4)*owned_stocks[symbol]['QUANTITY'])
-	print("Sell {} Price {:.2f} Profit: {:.2f} ".format(symbol, round(current_Value,4),round(profit,4)))
+	print("Sell {} Price {:.4f} Profit: {:.4f} ".format(symbol, round(current_Value,4),round(profit,4)))
 	del owned_stocks[symbol]
 
 #Print individual stock summary
@@ -162,9 +170,9 @@ def print_stock_info(symbol, current_Value):
 	total_invested = total_invested + invested
 	total_profit = total_profit + profit
 	if round(profit,4) > 0:
-		print(Fore.GREEN + "{} Profit: {:.2f} (Current Price: {:.2f}, Sell Price: {:.2f})".format(symbol, round(profit,4),round(current_Value,4), owned_stocks[symbol]['SELL PRICE'])+ Style.RESET_ALL)
+		print(Fore.GREEN + "{} Profit: {:.4f} (Current @ {:.4f}, Sell @ {:.4f}, Bought @ {:.4f}, Quantity: {})".format(symbol, round(profit,4),round(current_Value,4), owned_stocks[symbol]['SELL PRICE'],owned_stocks[symbol]['BUY PRICE'],owned_stocks[symbol]['QUANTITY'])+ Style.RESET_ALL)
 	else:
-		print(Fore.RED + "{} Profit: {:.2f} (Current Price: {:.2f}, Sell Price: {:.2f})".format(symbol, round(profit,4),round(current_Value,4),owned_stocks[symbol]['SELL PRICE'])+ Style.RESET_ALL)
+		print(Fore.RED + "{} Profit: {:.4f} (Current @ {:.4f}, Sell @ {:.4f}, Bought @ {:.4f}, Quantity: {})".format(symbol, round(profit,4),round(current_Value,4),owned_stocks[symbol]['SELL PRICE'],owned_stocks[symbol]['BUY PRICE'],owned_stocks[symbol]['QUANTITY'])+ Style.RESET_ALL)
 
 #Find potential Return on Investment
 def getROI(current_Value, SELL):
@@ -189,7 +197,10 @@ def refresh_information():
 	stock_symbols = data_compacted.columns.levels[0]
 	total_invested = 0
 	total_profit = 0
-	
+
+	print("================")
+	print("OWNED STOCKS")
+	print("================")
 	#Loop through all stock symbols and determine whether to buy, sell, or do nothing
 	for symbol in stock_symbols:
 		try:
@@ -222,9 +233,12 @@ def refresh_information():
 			BUY=0
 			SELL=0
 			current_Value = 0
-			
+	print()
+	print("================")
+	print("SUMMARY")
+	print("================")
 	print_information(total_profit, total_invested, MONEY)
-	pprint(dict(owned_stocks))
+	print("================")
 	
 	owned_stocks['MONEY'] = MONEY
 	saveStocks()
