@@ -202,6 +202,9 @@ def refresh_information():
 	print("OWNED STOCKS")
 	print("================")
 	#Loop through all stock symbols and determine whether to buy, sell, or do nothing
+	global owned_stocks_list
+	owned_stocks_list = list(owned_stocks.keys())
+	owned_stocks_list.remove("MONEY")
 	for symbol in stock_symbols:
 		try:
 			current_Value =  data_compacted[symbol]['Close'][int(PERIOD[:-1])-1]
@@ -213,6 +216,7 @@ def refresh_information():
 					continue
 				else:
 					print_stock_info(symbol, current_Value)
+					owned_stocks_list.remove(symbol)
 					if round(current_Value,4) >= owned_stocks[symbol]['SELL PRICE']:
 						sell_stock(symbol, current_Value)
 					elif round(current_Value,4) <= owned_stocks[symbol]['BUY PRICE'] * 0.90:
@@ -238,7 +242,11 @@ def refresh_information():
 			current_Value = 0
 	print()
 	print("================")
-	print("SUMMARY")
+	if len(owned_stocks_list) == 0:
+		print(Fore.GREEN + "SUMMARY (Accurate) " + Style.RESET_ALL)
+	else:
+		print(FORE.RED + "SUMMARY (inaccurate, missing: " + Style.RESET_ALL,end ='')
+		print(", ".join(owned_stocks_list))
 	print("================")
 	print_information(total_profit, total_invested, MONEY)
 	print("================")
@@ -263,7 +271,7 @@ if __name__ == "__main__":
 					print(' Market is open')
 				script_enabled = True
 			elif now >= today4pm:
-				if now.hour == 16 and now.minute in [0, 1, 2, 3] and now.second in [0, 1]:
+				if now.hour == 16 and now.minute in [0, 1, 2] and now.second == 0:
 					print('%s:%s:%s' % (now.hour, now.minute,now.second),end='')
 					print(' Market is now closed')
 				script_enabled = False
@@ -273,11 +281,15 @@ if __name__ == "__main__":
 					refresh_information()
 					timeout_start = time.time()
 					while time.time() <= timeout_start + 120:
-						if keyboard.is_pressed('ctrl+shift'):
-							sell_list = input("Enter comma separated string of stocks to sell: ").replace(' ', '').split(',')
-							break
-						else:
-							pass
+						try:
+							if keyboard.is_pressed('ctrl+shift'):
+								sell_list = input("Enter comma separated string of stocks to sell: ").replace(' ', '').split(',')
+								break
+							else: 
+								continue
+						except KeyboardInterrupt:
+							print("Program has terminated")
+							sys.exit()
 				except Exception as e:
 					print(e)
 					time.sleep(120)
