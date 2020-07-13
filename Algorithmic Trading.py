@@ -21,6 +21,8 @@ import csv
 import sys
 import json
 import keyboard
+import requests
+from io import StringIO
 
 import datetime
 import pytz
@@ -29,11 +31,16 @@ from colorama import Fore, Back, Style
 import colorama
 colorama.init()
 
+
 #Set initial investment
 initial_investment = 5000
 sell_list = list()
-
 #Load previously owned stocks
+
+def saveStocks():
+	with open('owned_stocks.json','w') as fp:
+		json.dump(owned_stocks, fp)
+
 try:
 	with open('owned_stocks.json', 'r') as fp:
 		temp = json.load(fp)
@@ -42,6 +49,8 @@ try:
 except:
 	MONEY = initial_investment
 	owned_stocks = defaultdict(list)
+	owned_stocks['MONEY'] = MONEY
+	saveStocks()
 
 #Use pandas to get stock prices
 yf.pdr_override()
@@ -88,7 +97,10 @@ sys.stdout = writer
 #Get top x stocks from exchange sorted by market cap
 def get_top_stocks():
 	try:
-		df = pd.read_csv(current_CSV)
+		headers = {'User-Agent': 'Mozilla/5.0'}
+		req = requests.get(current_CSV, headers=headers)
+		data = StringIO(req.text)
+		df = pd.read_csv(data)
 		df.apply(lambda x: x.fillna(0)) 
 		df['MarketCap'] = str(df['MarketCap'])
 		df['MarketCap'] = df['MarketCap'].str[1:]
@@ -96,7 +108,6 @@ def get_top_stocks():
 			df['MarketCap'] = df['MarketCap'].replace({'K': '*1e3', 'M': '*1e6', 'B':'*1e9','T':'*1e12'},regex=True).fillna(0).map(pd.eval).astype(float)
 		df = df.sort_values(by=["MarketCap"],ascending=False)
 		return(df)
-		
 	except Exception as e:
 		df = []
 
@@ -116,7 +127,6 @@ def download_stock_prices(tickers):
 		sys.stdout = writer
 		return(data_compacted)
 	except Exception as e:
-		print(e)
 		sys.stdout = writer
 		data = []
 		data_compacted = []
@@ -177,11 +187,6 @@ def print_stock_info(symbol, current_Value):
 #Find potential Return on Investment
 def getROI(current_Value, SELL):
 	return ((float(SELL) - float(current_Value))/float(current_Value))*100.00
-	
-#Save all owned stocks to file
-def saveStocks():
-	with open('owned_stocks.json','w') as fp:
-		json.dump(owned_stocks, fp)
 
 #Refresh all information, provide new output and buy/sell stocks accordingly
 def refresh_information():
