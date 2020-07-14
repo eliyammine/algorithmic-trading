@@ -109,6 +109,7 @@ def get_top_stocks():
 		df = df.sort_values(by=["MarketCap"],ascending=False)
 		return(df)
 	except Exception as e:
+		print("Getting top_stocks has failed " + e)
 		df = []
 
 #Download stock prices for the top x chosen stocks
@@ -127,6 +128,7 @@ def download_stock_prices(tickers):
 		sys.stdout = writer
 		return(data_compacted)
 	except Exception as e:
+		print("Downloading stock prices has failed " + e)
 		sys.stdout = writer
 		data = []
 		data_compacted = []
@@ -194,7 +196,7 @@ def refresh_information():
 	start_time = time.time()
 	dateTimeObj = datetime.datetime.now(pytz.timezone('US/Eastern'))
 	timestampStr = dateTimeObj.strftime("%d-%b-%Y (%H:%M:%S)")
-	print('Current Timestamp : ', timestampStr)
+	print('Current Timestamp:', timestampStr)
 
 	df = get_top_stocks()
 	ticker_symbols = " ".join(df[['Symbol']].head(Amount_To_Fetch).values.flatten())
@@ -241,6 +243,7 @@ def refresh_information():
 			else: 
 				pass
 		except Exception as e:
+			print("Refreshing information has failed " + e)
 			ROI = 0
 			BUY=0
 			SELL=0
@@ -250,8 +253,9 @@ def refresh_information():
 	if len(owned_stocks_list) == 0:
 		print(Fore.GREEN + "SUMMARY (Accurate) " + Style.RESET_ALL)
 	else:
-		print(FORE.RED + "SUMMARY (inaccurate, missing: " + Style.RESET_ALL,end ='')
-		print(", ".join(owned_stocks_list))
+		print(Fore.RED + "SUMMARY (inaccurate, missing: " + Style.RESET_ALL,end ='')
+		print(", ".join(owned_stocks_list), end='')
+		print(")")
 	print("================")
 	print_information(total_profit, total_invested, MONEY)
 	print("================")
@@ -296,7 +300,7 @@ if __name__ == "__main__":
 							print("Program has terminated")
 							sys.exit()
 				except Exception as e:
-					print(e)
+					print("Getting top_stocks has failed " + e)
 					time.sleep(120)
 			else:
 				time.sleep(1)
